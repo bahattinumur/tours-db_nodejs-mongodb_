@@ -1,6 +1,6 @@
-<h1>CAR RENTAL</h1>
+<h1>TOURS DB</h1>
 
-With the "Car Rental" application, you can quickly and easily view the cars that interest you. By using data from RapidAPI, you can filter the cars by fuel type, year, make, and model to find the most suitable option for you. Developed with TypeScript and other modern technologies, this application offers a maximum level of UI and UX.
+This Node.js backend application for a Tours platform includes features such as comment management, star ratings, and tour/user references. It dynamically calculates and updates tour ratings, storing all data in MongoDB. Key technologies used are Express, Mongoose, bcrypt, JWT, dotenv, express-mongo-sanitize, express-rate-limit, helmet, hpp, morgan, multer, nodemailer, nodemon, sharp, validator, xss, and xss-clean. Secure, efficient, and scalable!
 
 <h2> Software Languages </h2>
 
