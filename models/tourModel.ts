@@ -1,9 +1,10 @@
 const { Schema, model } = require("mongoose");
 const validator = require("validator");
 
-//! Şema | Şablon | Kalıp
-//* Veri tabanına ekleceğimiz dökümanın hangi değerlere ve hangi tipteki verilere sahip olmasını belirldiğimiz. varsayılan değerini benzersiz olma durmunu + verinin kaydedilmeden önce değişmesi gereken alanlarını belirlediğimiz yapı.
-//* Şemaları fırınlardaki kalıplara benzetebiliriz çünkü şemlardan çıkıcak olan her ürün birbirinin benzeri olucak.
+//! Schema | Template | Mold
+//* Defines the values and data types that a document added to the database should have.
+//* Also determines default values, uniqueness constraints, and fields that need to be modified before being saved.
+//* We can compare schemas to molds in bakeries because every product that comes out of them will be similar.
 const tourSchema = new Schema(
   {
     name: {
@@ -13,7 +14,7 @@ const tourSchema = new Schema(
       minLength: [10, "Tour name must be at least 10 characters"],
       maxLength: [40, "Tour name can be up to 50 characters"],
       validate: [
-        validator.isAlpha, // Validator kütüphanesindeki doğrulama fonksiyonunu kullandık
+        validator.isAlpha, // We used a validation function from the Validator library
         "The name must contain only alphabetical characters.",
       ],
     },
@@ -39,7 +40,7 @@ const tourSchema = new Schema(
 
     ratingsAverage: {
       type: Number,
-      default: 4.0, // Tur oluştururken rating'i söylemesek de default 4 olarak kaydedilecek
+      default: 4.0, // If a rating is not specified when creating the tour, it will be saved as 4 by default.
     },
 
     ratingsQuantity: {
@@ -54,8 +55,8 @@ const tourSchema = new Schema(
 
     priceDiscount: {
       type: Number,
-      // Custom validator (kendi yazdığımız doğrulayıcılar)
-      // İndirim değeri fiyatttan düşükse geçerli değilse geçersizdir
+      // Custom validator
+      // The discount value must be less than the price; otherwise, it is invalid.
       validate: {
         validator: function (value) {
           return value < this.price;
@@ -66,7 +67,7 @@ const tourSchema = new Schema(
 
     summary: {
       type: String,
-      trim: true, // kaydedilen verinin baş ve sonundaki boşlukları siler
+      trim: true, // Removes spaces at the beginning and end of the stored value.
       maxLength: [1000, "Tour description can be up to 1000 characters"],
       required: [true, "The tour must have a summary value"],
     },
@@ -82,18 +83,18 @@ const tourSchema = new Schema(
       required: [true, "The tour must have the imageCover value"],
     },
 
-    images: [String], // Metinlerden oluşan bir dizi
+    images: [String], // An array of strings
 
-    startDates: [Date], // Tarihlerde oluşan bir dizi
+    startDates: [Date], // An array of dates
 
     createdAt: {
       type: Date,
-      default: Date.now(), // Varsayılan olarak bugünün tarihini ekle
+      default: Date.now(), // Adds the current date by default
     },
 
     hour: Number,
 
-    // Başlangıç noktası
+    // Starting location
     startLocation: {
       type: {
         type: String,
@@ -102,11 +103,11 @@ const tourSchema = new Schema(
       },
       description: String,
       coordinates: [Number],
-      adress: String,
+      address: String,
     },
 
     //* EMBEDDING
-    //* Turun ziyaret noktaları dizi olarak tanımlanmalı
+    //* The tour's visit points should be defined as an array.
     locations: [
       {
         type: {
@@ -120,17 +121,17 @@ const tourSchema = new Schema(
       },
     ],
 
-    //* Child Refferance
-    //* Turun ilgili reheberleri kullanıcların dizisindeki ID'leri ile referans gösterilmeli
+    //* Child Reference
+    //* The guides of the tour should be referenced by their IDs in the users collection.
     guides: [
       {
-        type: Schema.ObjectId, // Referans tanımında tip her zaman Object-ID'dir
-        ref: "User", // Hangi model ile tanımlanmış verinin referansını aldığımızı belirtiyoruz
+        type: Schema.ObjectId, // The type is always Object-ID in reference definitions.
+        ref: "User", // Specifies which model the reference belongs to.
       },
     ],
   },
 
-  // Şema ayarları (sanal değreleri aktif ettik)
+  // Schema settings (enabled virtual properties)
   {
     toJSON: { virtuals: true },
     toObject: { virtuals: true },
@@ -138,86 +139,59 @@ const tourSchema = new Schema(
 );
 
 //! INDEX
-// Turları alırken fiyat ve rating ortalamasına göre filtre yapan kullanıcılara index sayesinde artık çok daha hızlı bir şekilde cevap vereceğiz. Index yapılan değerler veritabanında belirlediğimiz yöne göre sıralanır ve sıralanmış hali saklanır (belirli bir alan kaplar) ve bu değere göre filtreleme yapıldığında mongoDB'nin, verileri zaten sıralı olduğu için bütün dökümanları kontrol etmesine gerek kalmaz, sadece bulunan sayıda döküman incelenir bu sayede yüklenmesi süresini azaltırız.
+// By using an index, we can respond much faster to users filtering tours by price and rating.
+// Indexed fields are stored in sorted order, reducing the time required for searches.
 tourSchema.index({ price: 1, ratingsAverage: -1 });
 
-// Coğrafi veri için indexleme
+// Indexing for geospatial data
 tourSchema.index({ startLocation: "2dsphere" });
 
-//! Virtual Property (Sanal Değer)
-// Veri tabanında tutmamıza değmeyecek ama client tarafından
-// Yapılan isteklerde göndermemiz gereken verileri veri tabanında tutmayıp
-// Client'a gönderirken hesaplama işlemidir.
-// Normal function kullanmamımızın sebebi this anahtar kelimesine erişim
-// This aracılığı ile turların değerlerine erişebiliyoruz
-// Fonksiyon hesaplama sonucu return edilen veri eklenilecek olan sanal değer olur.
+//! Virtual Property
+// Instead of storing unnecessary values in the database, we calculate them dynamically for client requests.
 tourSchema.virtual("slug").get(function () {
   return this.name.toLowerCase().replace(/ /g, "-");
 });
 
 //! Virtual Populate
-// Normalde yorumları parent refferance ile turlara bağlamıştı ama bu yüzden turları aldığımız zaman o tura ait olan yorumlara erişemiyoruz.
 tourSchema.virtual("reviews", {
   ref: "Review",
-  foreignField: "tour", // Dökümanın hangi alanına göre referans alıcaz
-  localField: "_id", // Diğer dökümandaki alanın mevcut dökümandaki karşılığı olan alma
+  foreignField: "tour",
+  localField: "_id",
 });
 
 //! Document Middleware
-// Middleware, iki olay arasında çalışan yapı
-// Örn: Verinin alınıp veritabanına kaydedilmesi sırasında
 tourSchema.pre("save", function (next) {
-  // Veritabanına kaydedilmek üzere olan veriye yeni değer ekledik
   this.hour = this.duration * 24;
-
-  // Sonraki adıma geçiş izni
   next();
 });
 
-// Fonksiyonu sadece bir işlemden önce değil sonra da çalıştırabiliyoruz
 tourSchema.post("updateOne", function (doc, next) {
-  //console.log('saved doc.', doc);
-  //Örn: Kullanıcı yeni bir rapor oluşturduktan hemen sonra bu ay rapor sayısı + 1
-  //Örn: Kullanıcı yeni bir hesap oluşturduktan hemen sonra mail göndermek isteyebiliriz
-  //Örn: Kullanıcı şifresini güncellediğinde şifre değiştirme maili gönderilebilir.
-
   next();
 });
 
-//! Query Middleware (Sorgu Arayazılımı)
-// Sorgulardan önce veya sonra devreye giren arayazılımlar
+//! Query Middleware
 tourSchema.pre(/^find/, async function (next) {
-  // Find isteklerinde secret değeri true olanları aradan çıkar
   this.find({ secret: { $ne: true } });
-
   next();
 });
 
 //! Populate
-// Sorgulardan önce middleware ile populate'i tanımlarız.
-// MongoDB'de populate bir belgedeki belirli bir alanın o alana referans verilen diğer bir kolleksiyondaki belgelerle dolduruluması anlamına gelir. Yani populating, referansları gerçek verilerle doldurmayı sağlar.
 tourSchema.pre(/^find/, function (next) {
   this.populate({
-    // Doldurulması gereken alanın ismi
     path: "guides",
-    // Doldururken istemediğimiz alanlar
     select: "-__v -passwordResetToken -passwordResetExpires",
   });
-
   next();
 });
 
-// Hiçbir rapora gizli olanları dahil etme
 tourSchema.pre("aggregate", function (next) {
-  // Raporun ilk adımını belirle
   this.pipeline().push({ $match: { secret: { $ne: true } } });
-
   next();
 });
 
 //! Model
-// Model şemadaki kısıtlamara göre kollekisyona yeni veri ekleme çıkarma kolleksiyondan veri alma gibi işlemleri yapmamıza olanak sağlar
+// The model allows us to perform operations such as adding, removing, and retrieving data from the collection based on schema constraints.
 const Tour = model("Tour", tourSchema);
 
-// Tur modelini farklı dosyalarda kullanabilmek için export ediyoruz.
+// Exporting the Tour model to use it in different files
 module.exports = Tour;

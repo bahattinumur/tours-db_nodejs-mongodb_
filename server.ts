@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const app = require('./app');
 require('dotenv').config({ path: './config.env' });
 
-// MongoDB veritabanı ile bağlantı sağla
+// Connect to the MongoDB database
 mongoose
   .connect(process.env.DATABASE_URL)
   .then(() => console.log('Connection to database established'))
@@ -10,7 +10,7 @@ mongoose
     console.log('ERROR!! There was a problem connecting to the database', err)
   );
 
-// Server'ı ayağa kaldır
+// Start the server
 app.listen(process.env.PORT, () => {
-  console.log(`The application started listeining on port ${process.env.PORT}`);
+  console.log(`The application started listening on port ${process.env.PORT}`);
 });

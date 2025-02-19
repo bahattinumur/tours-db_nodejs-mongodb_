@@ -3,7 +3,7 @@ const validator = require("validator");
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
 
-// Kullanıcı şemasını oluştur
+// Create the user schema
 const userSchema = new Schema({
   name: {
     type: String,
@@ -31,7 +31,7 @@ const userSchema = new Schema({
       validator.isStrongPassword,
       "Your password is not strong enough",
     ],
-    select: false, // Kullanıcı verisi çağrıldığında göndermediğimiz değer
+    select: false, // This field will not be included when retrieving user data
   },
 
   passwordConfirm: {
@@ -64,83 +64,82 @@ const userSchema = new Schema({
   passwordResetExpires: Date,
 });
 
-//1) Veritabanında kullanıcyı kaydetmeden önce password
-// alınınan şifreleme algoritmalarından geçir ve şifrele
-// passwordConfirm alanını kaldır.
+//1) Encrypt and hash the password before saving the user to the database
+// Remove the passwordConfirm field.
 userSchema.pre("save", async function (next) {
-  // Daha önce şifre hash'lendiyse bu fonksiyon çalışmasın
+  // If the password has already been hashed, skip this function
   if (!this.isModified("password")) return next();
 
-  //* Şifreyi hash'le ve salt'la
+  //* Hash and salt the password
   this.password = await bcrypt.hash(this.password, 12);
 
-  //* Onay şifresini kaldır
+  //* Remove the confirmation password field
   this.passwordConfirm = undefined;
 });
 
-//2) Todo şifre değişince tarihi güncelle
+//2) Update the password change timestamp when the password is modified
 userSchema.pre("save", function (next) {
-  // Eğer şifre değişmediyse veya dökümanı yeni oluşturulduysa bir şey yapma
+  // If the password was not modified or the document is newly created, do nothing
   if (!this.isModified("password") || this.isNew) return next();
 
-  // Şifre sonrdan değiştiyse şifre değişim tarihini belirle
+  // If the password was modified later, set the password change timestamp
   this.passwordChangedAt = Date.now() - 1000;
 
   next();
 });
 
-//3) Kullanıcı veritbanından alınmaya çalışıldığında hesap inaktif ise erişimini engelle
+//3) Prevent access to inactive accounts when retrieving users from the database
 userSchema.pre(/^find/, function (next) {
-  // Bundan sonraki işlemde yapılcak olan sorguda active olmayanları dahil etme koşulu giriyoruz
+  // Modify the query to exclude users with inactive accounts
   this.find({ active: { $ne: false } });
 
-  // Sonraki işleme devam et
+  // Continue with the next operation
   next();
 });
 
-//4) Hashlenmiş şifre ile normal şifreyi karşılaştırma özelliğini bir method olarak tanımlayalım
-// Tanımladığımız bu method sadece user belgeleri üzerinden erişilebilir
+//4) Define a method to compare a plain password with the hashed password
+// This method can only be accessed from user documents
 userSchema.methods.correctPass = async function (candidatePass, userPass) {
   return await bcrypt.compare(candidatePass, userPass);
 };
 
-//5) JWT oluşturulma tarihinden sonra şifre değiştirilimiş mi kontrol et
+//5) Check if the password was changed after the JWT was issued
 userSchema.methods.controlPassDate = function (JWTTime) {
   if (this.passwordChangedAt && JWTTime) {
-    // Şifre değiştirme tarihini saniye formatına çevirme
+    // Convert the password change timestamp to seconds
     const changeTime = parseInt(this.passwordChangedAt.getTime() / 1000);
 
-    // JWT şifre sıfırlandıktan önce mi oluşmuş
-    // Eğer JWT verilme tarihi şifre sıfırlama tarihinden küçükse, şifre değiştirme tarihi ileri tarihlidir ve ortada sorun vardır bu yüzden true döndürür.
-    // JWT verilme tarihi şifre sıfırlama tarihinden büyükse sorun yoktur false döndürür.
+    // Check if the JWT was issued before the password reset
+    // If the JWT timestamp is earlier than the password change timestamp, return true (indicating an issue)
+    // If the JWT timestamp is later than the password change timestamp, return false (indicating no issue)
     return JWTTime < changeTime;
   }
 
   return false;
 };
 
-//6) Şifre sıfırlama tokeni oluştur.
-// Bu token daha sonra kullanıcı mailine gönderilecek ve kullanıcı şifersini
-// Sıfırlarken kimliğini doğrulama amaçlı bu tokeni kullanacak
-// 10 dakikkalık geçerlilik süresi olucak
+//6) Generate a password reset token
+// This token will later be sent to the user via email
+// The user will use this token to verify their identity when resetting their password
+// The token will be valid for 10 minutes
 userSchema.methods.createPasswordResetToken = function () {
-  //1) 32 Byte'lık rastgele veri oluşturur ve onu hexadecimal bir diziye dönüştürür
+  //1) Generate a 32-byte random value and convert it to a hexadecimal string
   const resetToken = crypto.randomBytes(32).toString("hex");
 
-  // 2) Tokeni hashle ve user dökümanı içerisine ekle
+  // 2) Hash the token and store it in the user document
   this.passwordResetToken = crypto
     .createHash("sha256")
     .update(resetToken)
     .digest("hex");
 
-  // 3) Tokenin son geçerlilik tarihihini kullanıcının dökümanına ekle
+  // 3) Set the expiration time for the token
   this.passwordResetExpires = Date.now() + 10 * 60 * 1000;
 
-  // 4) Tokenin normal halini return et
+  // 4) Return the original token
   return resetToken;
 };
 
-// Kullanıcı modelini oluştur
+// Create the user model
 const User = model("User", userSchema);
 
 module.exports = User;

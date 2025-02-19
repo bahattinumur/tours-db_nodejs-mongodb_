@@ -2,12 +2,15 @@ const APIFeatures = require("../utils/apiFeatures");
 const AppError = require("../utils/appError");
 const catchAsync = require("../utils/catchAsync");
 
-// Delete işlemini proje içerisnide sadece model ismini değiştirerek defalarca kullanıp gereksiz kod tekrarına sebep oluyorduk bizde bu kod tekrarını önlemek için silme işlevindeki dinamik olan modeli parametre olarak alıyoruz herhangi bir ute eleman silinmesi gerektiğinde bu methodu çağırıp parametre olarak silinicek elemanın modelinni gönderiyoruz bu sayede büyük bir kod kalabalığından kurtuluyoruz
+// Previously, we were causing unnecessary code repetition by changing only the model name for each delete operation within the project.  
+// To prevent this code repetition, we take the model as a parameter in the delete function.  
+// Whenever we need to delete an element, we call this method and pass the model of the element to be deleted as a parameter.  
+// This way, we eliminate excessive code clutter.
 exports.deleteOne = (Model) =>
   catchAsync(async (req, res) => {
     const document = await Model.findByIdAndDelete(req.params.id);
 
-    // TODO CUSTOM HATA MESAJI EKLE
+    // TODO: ADD CUSTOM ERROR MESSAGE
 
     res.status(204).json({
       status: "success",
@@ -15,11 +18,10 @@ exports.deleteOne = (Model) =>
     });
   });
 
-// Güncelleme işlemi için ortak olarak kullanılabilecek method
-
+// A common method that can be used for update operations.
 exports.updateOne = (Model) =>
   catchAsync(async (req, res, next) => {
-    // New parametresi ile döndürülecek olan değerin dökümanın eski değil yeni değerleri olmasını istedik
+    // By using the "new" parameter, we ensure that the returned value contains the updated document instead of the old one.
     const updated = await Model.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
     });
@@ -40,36 +42,36 @@ exports.createOne = (Model) =>
 
 exports.getOne = (Model, popOptionts) =>
   catchAsync(async (req, res, next) => {
-    // Bir sorgu oluştur
+    // Create a query
     let query = Model.findById(req.params.id);
 
-    // Eğer populate ayarları varsa sorguya ekle
+    // If populate options exist, add them to the query
     if (popOptionts) query = query.populate(popOptionts);
 
-    // Sorguyu çalıştır
+    // Execute the query
     const found = await query;
 
-    // Cevabı gönder
+    // Send the response
     res.status(200).json({ message: "Document found", data: found });
   });
 
 exports.getAll = (Model) =>
   catchAsync(async (req, res, next) => {
-    //* /reviews > bütün yorumları getir
-    //* /tours/tur_id/reviews > bir tura atılan yorumları getir
+    //* /reviews > Retrieve all reviews
+    //* /tours/tour_id/reviews > Retrieve reviews related to a specific tour
     let filter = {};
 
-    // Eğer URL'de turID parametresi varsa yapılcak sorguyu bir tura ait yorumları alacak şekilde güncelle
+    // If there is a tourID parameter in the URL, update the query to retrieve reviews for a specific tour
     if (req.params.tourId) filter = { tour: req.params.tourId };
 
-    // APIFeatures class'ından örnek oluşturduk ve içerisndeki istediğimiz API özelliklerini çağırdık
+    // Create an instance of the APIFeatures class and call the necessary API features
     const features = new APIFeatures(Model.find(), req.query)
       .filter()
       .sort()
       .limit()
       .paginate();
 
-    // Hazırldaığımız komutu çalıştır verileri al
+    // Execute the prepared query and retrieve the data
     const docs = await features.query;
 
     res.status(200).json({

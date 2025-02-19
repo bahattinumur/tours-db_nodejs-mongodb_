@@ -4,25 +4,25 @@ const authController = require("../controllers/authControllers");
 
 const router = express.Router();
 
-// Kullanıcıların kaydolması için
+// For user registration
 router.post("/signup", authController.signup);
 
-// Kullanıcıların varolan hesaba giriş yapması için
+// For users to log in to an existing account
 router.post("/login", authController.login);
 
-// Kullanıcı şifresini unuttuysa
+// If the user forgot their password
 router.post("/forgot-password", authController.forgotPassword);
 
-// E-postasına gönderdiğimiz link'e istek atınca
+// When the user clicks the link sent to their email
 router.patch("/reset-password/:token", authController.resetPassword);
 
-// bu satırdan sonraki bütün route'lardan önce protect middleware çalışsın
+// From this line onward, the protect middleware should run before all routes
 router.use(authController.protect);
 
-// Şifreyi güncellemek istiyorsa
+// If the user wants to update their password
 router.patch("/update-password", authController.updatePassword);
 
-// Hesabını güncellemek isteyince
+// When the user wants to update their account
 router.patch(
   "/update-me",
   userController.updloadUserPhoto,
@@ -30,10 +30,10 @@ router.patch(
   userController.updateMe
 );
 
-// Hesabını silmek isteğidinde
+// When the user wants to delete their account
 router.delete("/delete-me", userController.deleteMe);
 
-// Genellikle adminlerin kullanıcağı route'lar
+// Routes generally used by admins
 router
   .route("/")
   .get(userController.getAllUsers) //

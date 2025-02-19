@@ -1,13 +1,16 @@
-// Javascript'teki yerleşik hata class'ının bütün özelliklerinin dışarısında ekstra özelliklere ve parametrelere sahip olan  gelişmiş versiyonu oluşturlaralım.
+// Let's create an advanced version of the built-in JavaScript error class 
+// that has additional properties and parameters.
 
 class AppError extends Error {
   constructor(message, statusCode) {
     super(message);
     this.statusCode = statusCode;
-    // Durum koduna göre status değerini belirle: 4xx şeklindeyse fail 5xx şeklindeyse error olmalı
+    
+    // Determine the status value based on the status code: 
+    // If it starts with 4xx, it should be "fail", and if it starts with 5xx, it should be "error".
     this.status = String(this.statusCode).startsWith("4") ? "fail" : "error";
 
-    // Hata'nın detayı ve hata oluşana kadar çalışan detayların bilgisini al
+    // Capture the error details and the stack trace of the operations leading to the error.
     Error.captureStackTrace(this, this.constructor);
   }
 }

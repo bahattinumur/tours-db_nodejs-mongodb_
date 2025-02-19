@@ -6,7 +6,7 @@ const Review = require("../../models/reviewModel");
 const mongoose = require("mongoose");
 require("dotenv").config({ path: "./config.env" });
 
-// MongoDB veritabanı ile bağlantı sağla
+// Establish connection to MongoDB database
 mongoose
   .connect(process.env.DATABASE_URL)
   .then(() => console.log("Connection to database established"))
@@ -14,16 +14,16 @@ mongoose
     console.log("ERROR!! There was a problem connecting to the database", err)
   );
 
-// process.argv: node'da çalışan komut satırının argümanlarını dizi şeklinde içeren bir nesnedir
+// process.argv: An object that contains the command line arguments in Node.js as an array
 
-// Turlar dosyasındaki verileri oku
+// Read data from the tour files
 let tours = JSON.parse(fs.readFileSync(`${__dirname}/tours.json`));
 let users = JSON.parse(fs.readFileSync(`${__dirname}/users.json`));
 let reviews = JSON.parse(fs.readFileSync(`${__dirname}/reviews.json`));
 
-// Js formatına çevir
+// Convert to JS format
 
-//! Dosyayadan verileri alıp kolleksiyona aktarırır
+//! Retrieves data from the file and transfers it to the collection
 const importData = async () => {
   try {
     await Tour.create(tours, { validateBeforeSave: false });
@@ -37,7 +37,7 @@ const importData = async () => {
   process.exit();
 };
 
-//! Kolleksiyondaki bütün verileri temizler
+//! Clears all data from the collection
 const deleteData = async () => {
   try {
     await Tour.deleteMany();
@@ -51,7 +51,7 @@ const deleteData = async () => {
   process.exit();
 };
 
-// Çalıştırlan komuttaki argümanlara göre yaplıcak olan işlemi belirle
+// Determine the operation based on the arguments in the executed command
 if (process.argv.includes("--import")) {
   importData();
 } else if (process.argv.includes("--delete")) {

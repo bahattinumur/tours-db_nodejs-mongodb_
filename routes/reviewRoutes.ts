@@ -2,7 +2,7 @@ const express = require("express");
 const reviewController = require("../controllers/reviewControllers");
 const { protect } = require("../controllers/authControllers");
 
-// MergeParams kapsayıcı route'ta tanımlanmış olan parametreleri alt routeda'da erişmemizi sağlar
+// MergeParams allows us to access the parameters defined in the container route in the subroute
 const router = express.Router({ mergeParams: true });
 
 router

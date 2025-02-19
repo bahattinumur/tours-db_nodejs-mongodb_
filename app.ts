@@ -11,64 +11,64 @@ const xss = require("xss-clean");
 const hpp = require("hpp");
 const multer = require("multer");
 
-// Express kurulum
+// Express setup
 const app = express();
 
-// Güvenlik için headerlar ekler
+// Adds security headers
 app.use(helmet());
 
-// İstek detaylarını consola yazan middlware
+// Middleware that logs request details to the console
 app.use(morgan("dev"));
 
-// Bir IP adresinden belirli süre içerinde gelecek olan istekleri sınırla
+// Limits the number of requests from the same IP address within a certain period
 const limiter = rateLimit({
-  max: 100, // Aynı IP adresinden gelecek max istek sınırı
-  windowMs: 60 * 60 * 1000, // ms cinsinden 1 saat
+  max: 100, // Maximum request limit from the same IP address
+  windowMs: 60 * 60 * 1000, // 1 hour in milliseconds
   message: "You have completed your request within 1 hour. Try again later",
 });
 
-// Middleware'i API route'ları için tanıtma
+// Introduce the middleware for API routes
 app.use("/api", limiter);
 
-// body headers vs. gelen json verisini js'de kullanbilir formata getirir
+// Converts incoming JSON data in body, headers, etc., into a format usable in JS
 app.use(express.json({ limit: "10kb" }));
 
-// Data sanitization - Verileri Sterelize Etme - Query Injection
-// İsteğin body / params / header kısmına eklenen her türlü opeatörü kaldır
+// Data sanitization - Cleans data to prevent Query Injection
+// Removes any operators added to the request body, params, or headers
 app.use(mongoSanitize());
 
-// HTML kodunun içeriesinde saklanan js'yi tespit eder ve bozar
+// Detects and neutralizes JavaScript hidden inside HTML code
 app.use(xss());
 
-// Parametre kirliliğini önler
+// Prevents parameter pollution
 app.use(hpp({ whitelist: ["duration", "ratingsQuantity"] }));
 
-// Tour ve user route'larını projeye tanıt
+// Introduce tour and user routes to the project
 app.use("/api/v1/tours", tourRouter);
 app.use("/api/v1/users", userRouter);
 app.use("/api/v1/reviews", reviewRouter);
 
-// Tanımlanmayan bir route'a istek atıldığında hata ver
+// Return an error when a request is made to an undefined route
 app.all("*", (req, res, next) => {
-  // Hata detaylarını belirle
+  // Define error details
   const error = new AppError("You sent a request to an undefined route", 404);
 
-  // Hata middlware'ine yönlendir ve hata bilgilerini gönder
+  // Forward the error to the error-handling middleware
   next(error);
 });
 
-// Hata olduğunda devreye giren bir middleware
-// hata bilgilerini alır ve cevap olarak gönderir
+// Middleware that is triggered when an error occurs
+// Captures error details and sends a response
 app.use((err, req, res, next) => {
-  // hata detaylarını konsola yaz
+  // Log error details to the console
   console.log(err.stack);
 
-  // Durum kodu veya durum değerleri gönderilmediğinde varsayılan değerler devreye girsin
+  // Assign default values if status code or status message is not provided
   err.statusCode = err.statusCode || 500;
   err.status = err.status || "error";
   err.message = err.message || "Sorry, an error occurred";
 
-  // Cevap gönder
+  // Send response
   res.status(err.statusCode).json({
     status: err.status,
     message: err.message,
