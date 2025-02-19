@@ -4,7 +4,7 @@ This Node.js backend application for a Tours platform includes features such as 
 
 <h2> Software Languages </h2>
 
-- JavaScript
+- TypeScript
 
 <h2> Libraries </h2>
 
